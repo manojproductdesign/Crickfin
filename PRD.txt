@@ -1,0 +1,259 @@
+Cricket League Management System
+Document Version: 1.0
+Date: [Current Date]
+1. Project Overview
+1.1 Purpose
+The purpose of this system is to manage all operational aspects of a cricket league, including player tracking, fee collection, payment processing, expense tracking, and financial reporting.
+
+1.2 Scope
+The system will provide role-based access for Admins and Players, support for cash and GPay payments, expense management for league purchases, and generation of financial summaries and reports.
+
+1.3 Assumptions
+
+Users have access to a modern web browser.
+
+GPay integration is handled via standard payment gateway APIs.
+
+The system will not handle real-time scoring or live match streaming.
+
+2. Objectives
+Objective	Description
+Track Players	Maintain player profiles, contact info, and participation history.
+Manage Payments	Record and track all incoming payments from players.
+Calculate Fees	Automatically calculate ball fees and other dues based on participation.
+Financial Transparency	Provide clear financial summaries (collections, expenses, net balance).
+3. User Roles
+Role	Access Level
+Admin	Full system access: manage players, matches, payments, expenses, reports, and user roles.
+Player	Read-only access to own profile, payment history, current balance, and match participation.
+4. Authentication
+FR-01: User Registration
+
+New users must provide name, email, phone number, and role selection (Admin/Player).
+
+Admins must approve new player registrations (configurable).
+
+FR-02: User Login
+
+Secure login using email/phone and password.
+
+Passwords must be stored using hashing (e.g., bcrypt).
+
+FR-03: Role-Based Access Control (RBAC)
+
+After login, users can only access modules permitted by their role.
+
+Unauthorized access attempts must be logged.
+
+Acceptance Criteria:
+
+Players cannot access admin pages via direct URL.
+
+Admin can create, edit, or delete users.
+
+5. Player Management
+FR-04: Player Profile
+
+Fields: Full name, email, phone number, date of birth, team name (if any), joining date.
+
+Each player gets a unique ID.
+
+FR-05: CRUD Operations (Admin only)
+
+Add new player.
+
+Edit existing player details.
+
+Delete player (soft delete recommended to retain history).
+
+View list of all players with search and filter options.
+
+FR-06: Player Dashboard (Player role)
+
+View own profile.
+
+View current balance (fees due).
+
+View payment history.
+
+View match participation history.
+
+Acceptance Criteria:
+
+No duplicate email/phone numbers allowed.
+
+Deleted players are not visible in active lists but remain in reports.
+
+6. Match Management
+FR-07: Match Creation (Admin only)
+
+Fields: Match date, opponent team, venue, match type (league/knockout/friendly).
+
+Option to mark match as completed.
+
+FR-08: Player Participation Tracking
+
+Admin can mark which players participated in each match.
+
+System automatically records participation for fee calculation.
+
+FR-09: Participation History
+
+Players can view their own match participation history.
+
+Admins can view participation per match or per player.
+
+7. Payment Module
+FR-10: Payment Methods
+
+Support Cash and GPay as payment modes.
+
+For GPay, store transaction ID and payment gateway response.
+
+FR-11: Record Payment
+
+Admin records a payment against a player.
+
+Fields: Amount, date, payment method (Cash/GPay), reference ID (for GPay), remarks.
+
+FR-12: Payment History
+
+Players can view all their past payments.
+
+Admin can view all payments, filter by player, date range, or method.
+
+FR-13: Balance Calculation
+
+System calculates Remaining Balance = Total Fees Due - Total Paid Amount.
+
+Balance is updated in real-time after each payment or fee addition.
+
+8. Ball Fees Tracking
+FR-14: Fee Configuration (Admin only)
+
+Set cost per ball or match participation fee (e.g., ₹X per ball or ₹Y per match).
+
+FR-15: Track Ball Fees
+
+Admin can assign ball fees to players based on matches/bowled overs.
+
+Fields: Player name, match, number of balls bowled/played, total ball cost.
+
+FR-16: Ball Fee Balance
+
+Track:
+
+Total ball cost
+
+Paid amount (against ball fees)
+
+Remaining balance (per player)
+
+Acceptance Criteria:
+
+Ball fees are separate from other league fees.
+
+Payment module can allocate payments toward ball fees.
+
+9. Purchase Management (Expenses)
+FR-17: Expense Categories
+
+Predefined categories: Kits, Bats, Medicines, Trophies, Ground fees, Umpire fees, Others.
+
+FR-18: Expense Entry (Admin only)
+
+Fields: Category, description, amount, date, payment method, bill/image upload (optional).
+
+FR-19: Expense Tracking
+
+View all expenses with filters by category, date range.
+
+Total expenses summary on dashboard.
+
+Acceptance Criteria:
+
+Expenses cannot be deleted but can be edited or marked as void.
+
+Each expense is included in financial summary.
+
+10. Team Management
+FR-20: Team Creation
+
+Admin can create multiple teams (e.g., Team A, Team B) within the league.
+
+FR-21: Team Assignment
+
+Assign players to a team.
+
+A player can be in only one team at a time (configurable).
+
+FR-22: Team Dashboard
+
+View team-wise player list.
+
+View team-wise payment collection and expenses.
+
+11. Financial Summary
+FR-23: Key Metrics
+
+Total Collection = Sum of all player payments (Cash + GPay).
+
+Total Expenses = Sum of all purchase management entries.
+
+Net Balance = Total Collection – Total Expenses.
+
+FR-24: Financial Dashboard (Admin view)
+
+Real-time display of above metrics.
+
+Option to view for a selected date range or team.
+
+FR-25: Player-wise Financial View
+
+Show total paid, total due, and net balance per player.
+
+12. Reports
+FR-26: Player Report
+
+List of all players with contact info, team, balance, and total payments.
+
+FR-27: Team Report
+
+Team-wise player list and financial summary per team.
+
+FR-28: Financial Report
+
+Detailed statement: collections (with breakdown by payment method), expenses (by category), net balance.
+
+FR-29: Payment History Report
+
+All payments recorded with player name, amount, date, method.
+
+FR-30: Report Export
+
+All reports exportable to PDF and Excel/CSV formats.
+
+Acceptance Criteria:
+
+Reports include date range filter.
+
+Admin can generate any report from the Reports section.
+
+13. Non-Functional Requirements
+Category	Requirement
+Security	All passwords hashed; HTTPS for data transmission; session timeout after 30 mins.
+Performance	Page load time < 3 seconds for lists/reports.
+Usability	Responsive design for mobile and desktop.
+Data Integrity	No data loss on partial form submission; confirmation dialogs for delete actions.
+Backup	Automated daily database backup.
+14. Assumptions & Constraints
+GPay integration assumes standard UPI payment flow with transaction ID capture.
+
+No real-time scoring or live stats tracking is required.
+
+Admin will manually input all match participation and ball fees.
+
+System will not handle player injury or availability tracking automatically.
+
+15. Conclusion
+This system ensures complete transparency and efficient league management by providing admin with full control over financial and operational data, while giving players clear visibility into their own dues and history.
