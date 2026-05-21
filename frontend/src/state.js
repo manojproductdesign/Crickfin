@@ -1,6 +1,8 @@
 // Crickfin Client State Manager
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = import.meta.env.DEV
+  ? 'http://localhost:5000/api'
+  : '/api';
 
 class StateStore {
   constructor() {

@@ -876,6 +876,10 @@ app.get('/api/dashboard/player/:playerId', authenticateToken, async (req, res) =
 });
 
 // Start Server
-app.listen(PORT, () => {
-  console.log(`Crickfin backend running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Crickfin backend running on port ${PORT}`);
+  });
+}
+
+export default app;

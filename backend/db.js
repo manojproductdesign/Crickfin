@@ -3,11 +3,32 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.join(__dirname, 'crickfin.db');
+let dbPath = path.join(__dirname, 'crickfin.db');
+
+// Support running on Vercel serverless (where only /tmp is writable)
+const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
+if (isVercel) {
+  const tempDbPath = path.join('/tmp', 'crickfin.db');
+  try {
+    if (!fs.existsSync(tempDbPath)) {
+      if (fs.existsSync(dbPath)) {
+        fs.copyFileSync(dbPath, tempDbPath);
+        console.log('Copied database to /tmp/crickfin.db');
+      } else {
+        console.log('Database not found in package, starting fresh');
+      }
+    }
+  } catch (err) {
+    console.error('Error copying database to /tmp:', err);
+  }
+  dbPath = tempDbPath;
+}
+
 const db = new sqlite3.Database(dbPath);
 
 // Helper function to wrap db methods in Promises
