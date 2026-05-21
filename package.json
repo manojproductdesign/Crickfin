@@ -1,6 +1,7 @@
 {
   "name": "crickfin",
   "version": "1.0.0",
+  "type": "module",
   "description": "Cricket League Management System",
   "scripts": {
     "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
