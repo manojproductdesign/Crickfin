@@ -19,3 +19,8 @@ frontend/dist/
 Thumbs.db
 
 .vercel
+
+# SQLite database (runtime data — not for version control)
+*.db
+*.db-shm
+*.db-wal
