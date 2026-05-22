@@ -51,20 +51,22 @@ export function renderLayout(contentHtml, activeView) {
   return `
     <div class="app-container">
       <!-- Sidebar -->
-      <aside class="sidebar" id="sidebar">
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar Navigation" role="complementary">
         <div class="sidebar-logo">
           <div class="logo-icon">${ICON_LOGO}</div>
           <span class="logo-text">Crickfin</span>
         </div>
-        <ul class="sidebar-menu">
-          ${menuHtml}
-        </ul>
+        <nav class="sidebar-nav" aria-label="Main Menu">
+          <ul class="sidebar-menu">
+            ${menuHtml}
+          </ul>
+        </nav>
         <div class="sidebar-footer">
           <div class="user-info">
             <span class="user-name">${user.name}</span>
             <span class="user-role">${user.role}</span>
           </div>
-          <button class="btn btn-secondary btn-sm" id="logout-btn" style="width: 100%;">
+          <button class="btn btn-secondary btn-sm" id="logout-btn" style="width: 100%;" aria-label="Log Out">
             ${ICON_LOGOUT} <span>Log Out</span>
           </button>
         </div>
@@ -77,7 +79,7 @@ export function renderLayout(contentHtml, activeView) {
       <main class="main-content">
         <!-- Top bar -->
         <header class="topbar no-print">
-          <button class="btn btn-secondary btn-sm" id="menu-toggle" style="display: none;">
+          <button class="btn btn-secondary btn-sm" id="menu-toggle" style="display: none;" aria-label="Toggle Navigation" aria-expanded="false" aria-controls="sidebar">
             ${ICON_BURGER}
           </button>
           <h2 class="page-title" style="text-transform: capitalize;">${activeView.replace('-', ' ')}</h2>
@@ -116,17 +118,20 @@ export function bindLayoutEvents() {
       sidebar.classList.add('mobile-open');
       if (overlay) overlay.classList.add('active');
       document.body.style.overflow = 'hidden'; // Prevent background scroll
+      menuToggle.setAttribute('aria-expanded', 'true');
     };
 
     const closeSidebar = () => {
       sidebar.classList.remove('mobile-open');
       if (overlay) overlay.classList.remove('active');
       document.body.style.overflow = '';
+      menuToggle.setAttribute('aria-expanded', 'false');
     };
 
     // Show/hide hamburger based on screen size
     if (isMobile()) {
       menuToggle.style.display = 'flex';
+      menuToggle.setAttribute('aria-expanded', 'false');
     }
 
     window.addEventListener('resize', () => {

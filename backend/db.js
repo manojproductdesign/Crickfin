@@ -1,4 +1,5 @@
 import sqlite3 from 'sqlite3';
+import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
@@ -10,52 +11,122 @@ const __dirname = path.dirname(__filename);
 
 let dbPath = path.join(__dirname, 'crickfin.db');
 
-// Support running on Vercel serverless (where only /tmp is writable)
-const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
-if (isVercel) {
-  const tempDbPath = path.join('/tmp', 'crickfin.db');
-  try {
-    if (!fs.existsSync(tempDbPath)) {
-      if (fs.existsSync(dbPath)) {
-        fs.copyFileSync(dbPath, tempDbPath);
-        console.log('Copied database to /tmp/crickfin.db');
-      } else {
-        console.log('Database not found in package, starting fresh');
+const isPostgres = !!process.env.DATABASE_URL;
+let pool;
+let db;
+
+if (isPostgres) {
+  pool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL.includes('localhost') || process.env.DATABASE_URL.includes('127.0.0.1')
+      ? false
+      : { rejectUnauthorized: false }
+  });
+  console.log('Database Client: PostgreSQL initialized');
+} else {
+  // Support running on Vercel serverless (where only /tmp is writable)
+  const isVercel = process.env.VERCEL === '1' || !!process.env.VERCEL;
+  if (isVercel) {
+    const tempDbPath = path.join('/tmp', 'crickfin.db');
+    try {
+      if (!fs.existsSync(tempDbPath)) {
+        if (fs.existsSync(dbPath)) {
+          fs.copyFileSync(dbPath, tempDbPath);
+          console.log('Copied database to /tmp/crickfin.db');
+        } else {
+          console.log('Database not found in package, starting fresh');
+        }
       }
+    } catch (err) {
+      console.error('Error copying database to /tmp:', err);
     }
-  } catch (err) {
-    console.error('Error copying database to /tmp:', err);
+    dbPath = tempDbPath;
   }
-  dbPath = tempDbPath;
+  db = new sqlite3.Database(dbPath);
+  console.log('Database Client: SQLite initialized');
 }
 
-const db = new sqlite3.Database(dbPath);
+// Translate SQLite query syntax to PostgreSQL syntax
+function translateQuery(sql) {
+  if (!isPostgres) return sql;
+
+  let index = 1;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let result = '';
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+    if (char === "'" && (i === 0 || sql[i-1] !== '\\')) {
+      inSingleQuote = !inSingleQuote;
+    }
+    if (char === '"' && (i === 0 || sql[i-1] !== '\\')) {
+      inDoubleQuote = !inDoubleQuote;
+    }
+    if (char === '?' && !inSingleQuote && !inDoubleQuote) {
+      result += '$' + index++;
+    } else {
+      result += char;
+    }
+  }
+
+  if (result.toUpperCase().includes('CREATE TABLE')) {
+    result = result.replace(/DATETIME/gi, 'TIMESTAMP');
+  }
+
+  return result;
+}
 
 // Helper function to wrap db methods in Promises
 export const query = {
   get: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.get(sql, params, (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
+    if (isPostgres) {
+      if (sql.trim().toUpperCase().startsWith('PRAGMA')) {
+        return Promise.resolve(null);
+      }
+      const translatedSql = translateQuery(sql);
+      return pool.query(translatedSql, params).then(res => res.rows[0] || null);
+    } else {
+      return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
       });
-    });
+    }
   },
   all: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.all(sql, params, (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
+    if (isPostgres) {
+      if (sql.trim().toUpperCase().startsWith('PRAGMA')) {
+        return Promise.resolve([]);
+      }
+      const translatedSql = translateQuery(sql);
+      return pool.query(translatedSql, params).then(res => res.rows);
+    } else {
+      return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
       });
-    });
+    }
   },
   run: (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-      db.run(sql, params, function (err) {
-        if (err) reject(err);
-        else resolve({ id: this.lastID, changes: this.changes });
+    if (isPostgres) {
+      if (sql.trim().toUpperCase().startsWith('PRAGMA')) {
+        return Promise.resolve({ id: null, changes: 0 });
+      }
+      const translatedSql = translateQuery(sql);
+      return pool.query(translatedSql, params).then(res => {
+        return { id: null, changes: res.rowCount };
       });
-    });
+    } else {
+      return new Promise((resolve, reject) => {
+        db.run(sql, params, function (err) {
+          if (err) reject(err);
+          else resolve({ id: this.lastID, changes: this.changes });
+        });
+      });
+    }
   }
 };
 
@@ -172,7 +243,7 @@ async function seedDb() {
   }
 
   // 2. Seed Default Admin
-  const adminUser = await query.get('SELECT * FROM users WHERE role = "admin" LIMIT 1');
+  const adminUser = await query.get("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
   if (!adminUser) {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash('admin123', salt);

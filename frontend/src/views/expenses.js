@@ -33,7 +33,7 @@ export async function renderExpenses() {
 
         <!-- Filter Bar -->
         <div class="filter-bar">
-          <select id="exp-category-filter" class="form-control" style="max-width: 200px;">
+          <select id="exp-category-filter" class="form-control" style="max-width: 200px;" aria-label="Category filter">
             <option value="">All Categories</option>
             <option value="kits">Kits</option>
             <option value="bats">Bats</option>
@@ -43,8 +43,8 @@ export async function renderExpenses() {
             <option value="umpire_fees">Umpire Fees</option>
             <option value="others">Others</option>
           </select>
-          <input type="date" id="exp-start-filter" class="form-control" />
-          <input type="date" id="exp-end-filter" class="form-control" />
+          <input type="date" id="exp-start-filter" class="form-control" aria-label="Start date filter" />
+          <input type="date" id="exp-end-filter" class="form-control" aria-label="End date filter" />
           <button class="btn btn-secondary btn-sm" id="filter-expenses-btn">Filter</button>
         </div>
 
@@ -169,14 +169,14 @@ function showLogExpenseModal() {
 
   container.innerHTML = `
     <div class="modal-backdrop">
-      <div class="modal-content">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-log">
         <div class="modal-header">
-          <h3 class="modal-title">Log League Expense</h3>
-          <button class="close-btn" id="close-modal">&times;</button>
+          <h3 class="modal-title" id="modal-title-log">Log League Expense</h3>
+          <button class="close-btn" id="close-modal" aria-label="Close dialog">&times;</button>
         </div>
         <form id="log-expense-form">
           <div class="modal-body">
-            <div id="modal-alert"></div>
+            <div id="modal-alert" role="alert" aria-live="assertive"></div>
             <div class="form-group">
               <label for="e-category">Category</label>
               <select id="e-category" class="form-control" required>
@@ -222,6 +222,33 @@ function showLogExpenseModal() {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('input, select, button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
+
   document.getElementById('log-expense-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const category = document.getElementById('e-category').value;
@@ -249,14 +276,14 @@ function showEditExpenseModal(expense) {
 
   container.innerHTML = `
     <div class="modal-backdrop">
-      <div class="modal-content">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modal-title-edit">
         <div class="modal-header">
-          <h3 class="modal-title">Edit Expense</h3>
-          <button class="close-btn" id="close-modal">&times;</button>
+          <h3 class="modal-title" id="modal-title-edit">Edit Expense</h3>
+          <button class="close-btn" id="close-modal" aria-label="Close dialog">&times;</button>
         </div>
         <form id="edit-expense-form">
           <div class="modal-body">
-            <div id="modal-alert"></div>
+            <div id="modal-alert" role="alert" aria-live="assertive"></div>
             <div class="form-group">
               <label for="edit-e-category">Category</label>
               <select id="edit-e-category" class="form-control" required>
@@ -308,6 +335,33 @@ function showEditExpenseModal(expense) {
   const closeModal = () => { container.innerHTML = ''; };
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('input, select, button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
 
   document.getElementById('edit-expense-form').addEventListener('submit', async (e) => {
     e.preventDefault();

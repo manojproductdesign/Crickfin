@@ -32,7 +32,7 @@ export async function renderAdminDashboard() {
     const content = `
       <div class="stats-grid">
         <!-- Collection Card -->
-        <div class="card stat-card card-interactive" onclick="window.location.hash='#payments'">
+        <a href="#payments" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
           <div class="stat-header">
             <span>TOTAL COLLECTIONS</span>
             <span style="color: var(--success);">${ICON_PAYMENTS}</span>
@@ -41,10 +41,10 @@ export async function renderAdminDashboard() {
           <div class="stat-change tech-label">
             Cash: ₹${data.collectionsBreakdown.cash} | GPay: ₹${data.collectionsBreakdown.gpay}
           </div>
-        </div>
+        </a>
 
         <!-- Expenses Card -->
-        <div class="card stat-card card-interactive" onclick="window.location.hash='#expenses'">
+        <a href="#expenses" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
           <div class="stat-header">
             <span>TOTAL EXPENSES</span>
             <span style="color: var(--danger);">${ICON_EXPENSES}</span>
@@ -53,10 +53,10 @@ export async function renderAdminDashboard() {
           <div class="stat-change tech-label">
             Active purchases logged
           </div>
-        </div>
+        </a>
 
         <!-- Balance Card -->
-        <div class="card stat-card card-interactive" onclick="window.location.hash='#reports'">
+        <a href="#reports" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
           <div class="stat-header">
             <span>NET BALANCE</span>
             <span style="color: var(--info);">${ICON_REPORTS}</span>
@@ -67,10 +67,10 @@ export async function renderAdminDashboard() {
           <div class="stat-change tech-label">
             Collections minus Expenses
           </div>
-        </div>
+        </a>
 
         <!-- Pending Approvals Card -->
-        <div class="card stat-card card-interactive" onclick="window.location.hash='#players'">
+        <a href="#players" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
           <div class="stat-header">
             <span>PENDING REGISTRATIONS</span>
             <span style="color: var(--warning);">${ICON_WARNING}</span>
@@ -79,7 +79,7 @@ export async function renderAdminDashboard() {
           <div class="stat-change tech-label" style="color: ${data.pendingRegistrations > 0 ? 'var(--warning)' : 'var(--text-muted)'};">
             ${data.pendingRegistrations > 0 ? 'Action required' : 'System up-to-date'}
           </div>
-        </div>
+        </a>
       </div>
 
       <!-- Quick Actions and Approvals -->
@@ -88,10 +88,10 @@ export async function renderAdminDashboard() {
         <div class="card">
           <h3 class="card-title">Quick Actions</h3>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
-            <button class="btn btn-primary" onclick="window.location.hash='#payments'">Record Payment</button>
-            <button class="btn btn-secondary" onclick="window.location.hash='#expenses'">Log Expense</button>
-            <button class="btn btn-secondary" onclick="window.location.hash='#matches'">Schedule Match</button>
-            <button class="btn btn-secondary" onclick="window.location.hash='#players'">Add Player</button>
+            <a href="#payments" class="btn btn-primary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Record Payment</a>
+            <a href="#expenses" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Log Expense</a>
+            <a href="#matches" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Schedule Match</a>
+            <a href="#players" class="btn btn-secondary" style="display: inline-flex; align-items: center; justify-content: center; text-decoration: none;">Add Player</a>
           </div>
         </div>
 
@@ -109,7 +109,7 @@ export async function renderAdminDashboard() {
       <div class="card" style="margin-top: 24px;">
         <h3 class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
           <span>Player Balance Ledger</span>
-          <button class="btn btn-secondary btn-sm" onclick="window.location.hash='#reports'">View Reports</button>
+          <a href="#reports" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; text-decoration: none;">View Reports</a>
         </h3>
         
         <div class="table-container">
@@ -189,7 +189,7 @@ async function renderPendingApprovals(allPlayers) {
           <strong style="font-size: 0.9rem;">${user.name}</strong>
           <div style="font-size: 0.75rem; color: var(--text-muted);">${user.email} | ${user.phone}</div>
         </div>
-        <button class="btn btn-primary btn-sm approve-btn" data-id="${user.id}">Approve</button>
+        <button class="btn btn-primary btn-sm approve-btn" data-id="${user.id}" aria-label="Approve registration for ${user.name}">Approve</button>
       </div>
     `).join('');
 

@@ -69,7 +69,10 @@ export function renderRegister() {
           </div>
           <div class="form-group">
             <label for="reg-password">Password</label>
-            <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required minlength="6" />
+            <input type="password" id="reg-password" class="form-control" placeholder="••••••••" required minlength="8" aria-describedby="reg-password-help" />
+            <small id="reg-password-help" class="form-text text-muted" style="display: block; margin-top: 4px; font-size: 0.8rem; opacity: 0.85;">
+              Must be at least 8 characters, containing at least one uppercase, one lowercase letter, and one number.
+            </small>
           </div>
           <div class="form-group">
             <label for="reg-role">Register As</label>
@@ -95,7 +98,7 @@ function displayAlert(containerId, message, type = 'danger') {
   const container = document.getElementById(containerId);
   if (!container) return;
   container.innerHTML = `
-    <div class="alert alert-${type}">
+    <div class="alert alert-${type}" role="alert" aria-live="assertive">
       ${message}
     </div>
   `;

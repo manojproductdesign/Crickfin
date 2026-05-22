@@ -114,11 +114,11 @@ function renderReportsDashboard(appEl, dashboard, players, teams, matches, payme
       <h3 class="card-title">Report Controls</h3>
       <div class="filter-bar" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
         <div class="form-group" style="margin: 0; min-width: 150px;">
-          <label>Start Date</label>
+          <label for="report-start-date">Start Date</label>
           <input type="date" id="report-start-date" class="form-control" value="${dateStart}">
         </div>
         <div class="form-group" style="margin: 0; min-width: 150px;">
-          <label>End Date</label>
+          <label for="report-end-date">End Date</label>
           <input type="date" id="report-end-date" class="form-control" value="${dateEnd}">
         </div>
         <div>

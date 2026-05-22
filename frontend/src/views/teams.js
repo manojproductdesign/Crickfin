@@ -34,7 +34,7 @@ export async function renderTeams() {
         <!-- Create Team Card -->
         <div class="card" style="height: fit-content;">
           <h3 class="card-title">Create New Team</h3>
-          <div id="team-alert"></div>
+          <div id="team-alert" role="alert" aria-live="assertive"></div>
           <form id="create-team-form">
             <div class="form-group">
               <label for="new-team-name">Team Name</label>
@@ -47,7 +47,7 @@ export async function renderTeams() {
         <!-- Assign Players Card -->
         <div class="card" style="height: fit-content;">
           <h3 class="card-title">Assign Player to Team</h3>
-          <div id="assign-alert"></div>
+          <div id="assign-alert" role="alert" aria-live="assertive"></div>
           <form id="assign-player-form">
             <div class="form-group">
               <label for="assign-player">Select Player</label>

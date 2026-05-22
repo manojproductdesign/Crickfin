@@ -169,6 +169,33 @@ function showScheduleMatchModal() {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const focusableEls = container.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled])');
+      if (focusableEls.length > 0) {
+        const firstFocusable = focusableEls[0];
+        const lastFocusable = focusableEls[focusableEls.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+  // Auto-focus first input
+  const firstInput = container.querySelector('input, select');
+  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+
   document.getElementById('schedule-match-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const matchDate = document.getElementById('m-date').value;
@@ -183,7 +210,7 @@ function showScheduleMatchModal() {
     } catch (err) {
       const alertBox = document.getElementById('modal-alert');
       if (alertBox) {
-        alertBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
       }
     }
   });
@@ -223,6 +250,35 @@ async function showParticipationModal(matchId, opponent) {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const focusableEls = container.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled])');
+      const visibleFocusable = Array.from(focusableEls).filter(el => {
+        const style = window.getComputedStyle(el);
+        const parentStyle = window.getComputedStyle(el.parentElement);
+        return style.display !== 'none' && style.visibility !== 'hidden' && parentStyle.visibility !== 'hidden';
+      });
+      if (visibleFocusable.length > 0) {
+        const firstFocusable = visibleFocusable[0];
+        const lastFocusable = visibleFocusable[visibleFocusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+
   try {
     const players = await store.fetchPlayers();
     const activeParticipation = await store.apiRequest(`/matches/${matchId}/participation`);
@@ -245,7 +301,7 @@ async function showParticipationModal(matchId, opponent) {
             <input type="checkbox" class="player-checkbox" data-id="${p.id}" ${isChecked ? 'checked' : ''} />
             <span><strong>${p.name}</strong> <small style="color: var(--text-muted); font-size: 0.75rem;">${p.team_name || ''}</small></span>
           </label>
-          <div class="stats-inputs" style="display: flex; gap: 8px; visibility: ${isChecked ? 'visible' : 'hidden'};">
+          <div class="stats-inputs" style="display: flex; gap: 8px; ${isChecked ? '' : 'display: none;'}">
             <input type="number" class="form-control p-balls-played" placeholder="Played" title="Balls Played" value="${stats.ballsPlayed}" style="width: 80px; padding: 4px 8px; font-size: 0.8rem; font-family: var(--font-mono);" min="0" />
             <input type="number" class="form-control p-balls-bowled" placeholder="Bowled" title="Balls Bowled" value="${stats.ballsBowled}" style="width: 80px; padding: 4px 8px; font-size: 0.8rem; font-family: var(--font-mono);" min="0" />
           </div>
@@ -259,9 +315,9 @@ async function showParticipationModal(matchId, opponent) {
         const row = e.target.closest('div');
         const inputs = row.querySelector('.stats-inputs');
         if (e.target.checked) {
-          inputs.style.visibility = 'visible';
+          inputs.style.display = 'flex';
         } else {
-          inputs.style.visibility = 'hidden';
+          inputs.style.display = 'none';
         }
       });
     });
@@ -287,14 +343,14 @@ async function showParticipationModal(matchId, opponent) {
       } catch (err) {
         const alertBox = document.getElementById('modal-alert');
         if (alertBox) {
-          alertBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+          alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
         }
       }
     });
 
   } catch (error) {
     document.getElementById('participation-list-container').innerHTML = `
-      <div class="alert alert-danger">Error: ${error.message}</div>
+      <div class="alert alert-danger" role="alert" aria-live="assertive">Error: ${error.message}</div>
     `;
   }
 }
@@ -327,6 +383,30 @@ async function showCompleteMatchModal(matchId) {
   const closeModal = () => { container.innerHTML = ''; };
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+  // Focus trap and Escape close
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const focusableEls = container.querySelectorAll('button:not([disabled])');
+      if (focusableEls.length > 0) {
+        const firstFocusable = focusableEls[0];
+        const lastFocusable = focusableEls[focusableEls.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
 
   document.getElementById('confirm-complete-btn').addEventListener('click', async () => {
     try {

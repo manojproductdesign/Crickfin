@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
 import { initDb, query } from './db.js';
 
 dotenv.config();
@@ -12,8 +14,57 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'crickfin_super_secret_key_2026';
 
-app.use(cors());
+// Trust proxy for correct client IP detection under reverse proxies/load balancers (e.g. Vercel)
+app.set('trust proxy', 1);
+
+// Secure API headers
+app.use(helmet());
+
+// Configure secure CORS allowed origins
+const allowedOrigins = [
+  'http://localhost:5000',
+  'http://localhost:60347',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
+                      origin.endsWith('.vercel.app') ||
+                      origin.startsWith('http://localhost:');
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
+
+// API Rate Limiting Config
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts, please try again after 15 minutes' }
+});
+
+app.use('/api', apiLimiter);
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 
 // Initialize Database on startup
 initDb()
@@ -63,6 +114,15 @@ app.post('/api/auth/register', async (req, res) => {
 
   if (role !== 'admin' && role !== 'player') {
     return res.status(400).json({ message: 'Invalid role selection' });
+  }
+
+  // Password strength validation
+  if (password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+  }
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({ message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
   }
 
   try {
@@ -229,6 +289,15 @@ app.post('/api/players', authenticateToken, isAdmin, async (req, res) => {
     return res.status(400).json({ message: 'Name, email, phone, and password are required' });
   }
 
+  // Password strength validation
+  if (password.length < 8) {
+    return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+  }
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({ message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number' });
+  }
+
   try {
     const existingUser = await query.get('SELECT * FROM users WHERE email = ? OR phone = ?', [email, phone]);
     if (existingUser) {
@@ -284,7 +353,7 @@ app.delete('/api/players/:id', authenticateToken, isAdmin, async (req, res) => {
   const playerId = req.params.id;
 
   try {
-    await query.run('UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND role = "player"', [playerId]);
+    await query.run("UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND role = 'player'", [playerId]);
     res.json({ message: 'Player soft-deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error deleting player' });
@@ -627,7 +696,7 @@ app.post('/api/teams/assign', authenticateToken, isAdmin, async (req, res) => {
   }
 
   try {
-    await query.run('UPDATE users SET team_id = ? WHERE id = ? AND role = "player"', [teamId || null, playerId]);
+    await query.run("UPDATE users SET team_id = ? WHERE id = ? AND role = 'player'", [teamId || null, playerId]);
     res.json({ message: 'Player assigned to team successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error assigning player to team' });
@@ -642,7 +711,7 @@ app.post('/api/teams/assign', authenticateToken, isAdmin, async (req, res) => {
 async function calculatePlayerFinancials(playerId = null) {
   // 1. Fetch current cost per ball
   const config = await query.get('SELECT cost_per_ball FROM ball_fees_config ORDER BY updated_at DESC LIMIT 1');
-  const costPerBall = config ? config.cost_per_ball : 10.0;
+  const costPerBall = config ? parseFloat(config.cost_per_ball) : 10.0;
 
   // 2. Fetch participation counts & match entry costs
   // Assume: standard match entry fee is ₹100 per match, ball fees is calculated separately
@@ -668,12 +737,12 @@ async function calculatePlayerFinancials(playerId = null) {
   const participationMap = {};
   participations.forEach(p => {
     participationMap[p.player_id] = {
-      matchesCount: p.matches_played,
-      totalBalls: (p.total_balls_played || 0) + (p.total_balls_bowled || 0),
-      ballsPlayed: p.total_balls_played || 0,
-      ballsBowled: p.total_balls_bowled || 0,
-      ballFeesDue: ((p.total_balls_played || 0) + (p.total_balls_bowled || 0)) * costPerBall,
-      generalFeesDue: p.matches_played * entryFeePerMatch
+      matchesCount: parseInt(p.matches_played || 0, 10),
+      totalBalls: (parseInt(p.total_balls_played || 0, 10)) + (parseInt(p.total_balls_bowled || 0, 10)),
+      ballsPlayed: parseInt(p.total_balls_played || 0, 10),
+      ballsBowled: parseInt(p.total_balls_bowled || 0, 10),
+      ballFeesDue: ((parseInt(p.total_balls_played || 0, 10)) + (parseInt(p.total_balls_bowled || 0, 10))) * costPerBall,
+      generalFeesDue: parseInt(p.matches_played || 0, 10) * entryFeePerMatch
     };
   });
 
@@ -696,8 +765,8 @@ async function calculatePlayerFinancials(playerId = null) {
   const paymentMap = {};
   payments.forEach(p => {
     paymentMap[p.player_id] = {
-      generalPaid: p.general_paid || 0,
-      ballFeesPaid: p.ball_fees_paid || 0
+      generalPaid: parseFloat(p.general_paid || 0),
+      ballFeesPaid: parseFloat(p.ball_fees_paid || 0)
     };
   });
 
@@ -745,7 +814,7 @@ app.get('/api/dashboard/summary', authenticateToken, async (req, res) => {
   try {
     // 1. Total Collections (from all payments)
     const collectionsResult = await query.get('SELECT SUM(amount) as total FROM payments');
-    const totalCollections = collectionsResult?.total || 0;
+    const totalCollections = parseFloat(collectionsResult?.total || 0);
 
     // Breakdown collections by method
     const paymentMethodsResult = await query.all(`
@@ -755,13 +824,13 @@ app.get('/api/dashboard/summary', authenticateToken, async (req, res) => {
     `);
     const collectionsBreakdown = { cash: 0, gpay: 0 };
     paymentMethodsResult.forEach(item => {
-      if (item.payment_method === 'cash') collectionsBreakdown.cash = item.total;
-      if (item.payment_method === 'gpay') collectionsBreakdown.gpay = item.total;
+      if (item.payment_method === 'cash') collectionsBreakdown.cash = parseFloat(item.total || 0);
+      if (item.payment_method === 'gpay') collectionsBreakdown.gpay = parseFloat(item.total || 0);
     });
 
     // 2. Total Expenses (active expenses)
-    const expensesResult = await query.get('SELECT SUM(amount) as total FROM expenses WHERE status = "active"');
-    const totalExpenses = expensesResult?.total || 0;
+    const expensesResult = await query.get("SELECT SUM(amount) as total FROM expenses WHERE status = 'active'");
+    const totalExpenses = parseFloat(expensesResult?.total || 0);
 
     // Breakdown expenses by category
     const expenseCategoriesResult = await query.all(`
@@ -772,15 +841,15 @@ app.get('/api/dashboard/summary', authenticateToken, async (req, res) => {
     `);
     const expensesBreakdown = {};
     expenseCategoriesResult.forEach(item => {
-      expensesBreakdown[item.category] = item.total;
+      expensesBreakdown[item.category] = parseFloat(item.total || 0);
     });
 
     // 3. Net Balance
     const netBalance = totalCollections - totalExpenses;
 
     // 4. Pending registrations count
-    const pendingUsers = await query.get('SELECT COUNT(*) as count FROM users WHERE status = "pending"');
-    const pendingRegistrations = pendingUsers?.count || 0;
+    const pendingUsers = await query.get("SELECT COUNT(*) as count FROM users WHERE status = 'pending'");
+    const pendingRegistrations = parseInt(pendingUsers?.count || 0, 10);
 
     // 5. Team wise collections & expenses summary
     const teamSummaryResult = await query.all(`
@@ -790,7 +859,7 @@ app.get('/api/dashboard/summary', authenticateToken, async (req, res) => {
         COUNT(DISTINCT u.id) as player_count
       FROM teams t
       LEFT JOIN users u ON u.team_id = t.id AND u.role = 'player' AND u.deleted_at IS NULL
-      GROUP BY t.id
+      GROUP BY t.id, t.name
     `);
 
     // Fetch team collections
@@ -803,13 +872,13 @@ app.get('/api/dashboard/summary', authenticateToken, async (req, res) => {
     `);
     const teamCollectionsMap = {};
     teamCollections.forEach(tc => {
-      teamCollectionsMap[tc.team_id] = tc.total;
+      teamCollectionsMap[tc.team_id] = parseFloat(tc.total || 0);
     });
 
     const teams = teamSummaryResult.map(t => ({
       teamId: t.team_id,
       teamName: t.team_name,
-      playerCount: t.player_count,
+      playerCount: parseInt(t.player_count || 0, 10),
       totalCollected: teamCollectionsMap[t.team_id] || 0
     }));
 
@@ -873,6 +942,19 @@ app.get('/api/dashboard/player/:playerId', authenticateToken, async (req, res) =
     console.error('Player dashboard error:', error);
     res.status(500).json({ message: 'Server error generating player dashboard' });
   }
+});
+
+// Centralized Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Error:', err.message, err.stack);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).json({
+    message: process.env.NODE_ENV === 'production'
+      ? 'An unexpected error occurred. Please contact the system administrator.'
+      : err.message
+  });
 });
 
 // Start Server

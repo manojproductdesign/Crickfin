@@ -33,17 +33,17 @@ export async function renderPayments() {
 
         <!-- Search / Filter Bar -->
         <div class="filter-bar">
-          <select id="pay-player-filter" class="form-control" style="max-width: 200px;">
+          <select id="pay-player-filter" class="form-control" style="max-width: 200px;" aria-label="Filter payments by Player">
             <option value="">All Players</option>
             ${players.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
           </select>
-          <select id="pay-method-filter" class="form-control" style="max-width: 150px;">
+          <select id="pay-method-filter" class="form-control" style="max-width: 150px;" aria-label="Filter payments by Payment Method">
             <option value="">All Methods</option>
             <option value="cash">Cash</option>
             <option value="gpay">GPay</option>
           </select>
-          <input type="date" id="pay-start-filter" class="form-control" placeholder="Start Date" />
-          <input type="date" id="pay-end-filter" class="form-control" placeholder="End Date" />
+          <input type="date" id="pay-start-filter" class="form-control" placeholder="Start Date" aria-label="Payment Start Date" />
+          <input type="date" id="pay-end-filter" class="form-control" placeholder="End Date" aria-label="Payment End Date" />
           <button class="btn btn-secondary btn-sm" id="filter-payments-btn">Filter</button>
         </div>
 
@@ -205,6 +205,38 @@ function showRecordPaymentModal(players) {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      const focusableEls = container.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled])');
+      const visibleFocusable = Array.from(focusableEls).filter(el => {
+        const style = window.getComputedStyle(el);
+        const parentStyle = window.getComputedStyle(el.parentElement);
+        return style.display !== 'none' && style.visibility !== 'hidden' && parentStyle.visibility !== 'hidden';
+      });
+      if (visibleFocusable.length > 0) {
+        const firstFocusable = visibleFocusable[0];
+        const lastFocusable = visibleFocusable[visibleFocusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      }
+    } else if (e.key === 'Escape') {
+      closeModal();
+    }
+  });
+  // Auto-focus first input
+  const firstInput = container.querySelector('input, select');
+  if (firstInput) setTimeout(() => firstInput.focus(), 50);
+
   const methodSelect = document.getElementById('p-method');
   const refGroup = document.getElementById('ref-group');
   const refInput = document.getElementById('p-ref');
@@ -245,7 +277,7 @@ function showRecordPaymentModal(players) {
     } catch (err) {
       const alertBox = document.getElementById('modal-alert');
       if (alertBox) {
-        alertBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
       }
     }
   });

@@ -35,8 +35,8 @@ export async function renderPlayers() {
 
         <!-- Search and Filter Bar -->
         <div class="filter-bar">
-          <input type="text" id="player-search" class="form-control" placeholder="Search by name, email, phone..." style="flex-grow: 1; max-width: 300px;" />
-          <select id="player-team-filter" class="form-control" style="max-width: 200px;">
+          <input type="text" id="player-search" class="form-control" placeholder="Search by name, email, phone..." style="flex-grow: 1; max-width: 300px;" aria-label="Search players by name, email, or phone" />
+          <select id="player-team-filter" class="form-control" style="max-width: 200px;" aria-label="Filter by Team">
             <option value="">All Teams</option>
             <option value="unassigned">Unassigned</option>
             ${teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('')}
@@ -213,7 +213,10 @@ function showAddPlayerModal(teams) {
             </div>
             <div class="form-group">
               <label for="add-p-password">Password</label>
-              <input type="password" id="add-p-password" class="form-control" placeholder="••••••••" required minlength="6" />
+              <input type="password" id="add-p-password" class="form-control" placeholder="••••••••" required minlength="8" aria-describedby="add-p-password-help" />
+              <small id="add-p-password-help" class="form-text text-muted" style="display: block; margin-top: 4px; font-size: 0.8rem; opacity: 0.85;">
+                Must be at least 8 characters, containing at least one uppercase, one lowercase letter, and one number.
+              </small>
             </div>
             <div class="form-group">
               <label for="add-p-team">Assign Team (Optional)</label>
@@ -236,6 +239,33 @@ function showAddPlayerModal(teams) {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('input, select, button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
+
   document.getElementById('add-player-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('add-p-name').value.trim();
@@ -251,7 +281,7 @@ function showAddPlayerModal(teams) {
     } catch (err) {
       const alertBox = document.getElementById('modal-alert');
       if (alertBox) {
-        alertBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
       }
     }
   });
@@ -311,6 +341,33 @@ function showEditPlayerModal(player, teams) {
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
 
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('input, select, button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
+
   document.getElementById('edit-player-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('edit-p-name').value.trim();
@@ -326,7 +383,7 @@ function showEditPlayerModal(player, teams) {
     } catch (err) {
       const alertBox = document.getElementById('modal-alert');
       if (alertBox) {
-        alertBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
       }
     }
   });
@@ -360,6 +417,33 @@ function showDeleteConfirmation(id, name) {
   const closeModal = () => { container.innerHTML = ''; };
   document.getElementById('close-modal').addEventListener('click', closeModal);
   document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+    
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
 
   document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
     try {
