@@ -67,6 +67,12 @@ app.use(cors((req, callback) => {
 
 app.use(express.json());
 
+// Request logger for debugging routing issues in production
+app.use((req, res, next) => {
+  console.log(`[Request Debug] Method: ${req.method}, URL: ${req.url}, OriginalURL: ${req.originalUrl}, Host: ${req.headers.host}`);
+  next();
+});
+
 // API Rate Limiting Config
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
