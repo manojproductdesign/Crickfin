@@ -239,6 +239,73 @@ async function testTeams() {
   } else {
     log('skip', 'Remove player from team', 'No test player');
   }
+
+  // 3.6 Edit team name
+  if (testTeamId) {
+    const newName = `Renamed Team ${Date.now()}`;
+    r = await req('PUT', `/teams/${testTeamId}`, { name: newName }, adminToken);
+    r.status === 200
+      ? log('pass', 'PUT /teams/:id — rename team', `HTTP ${r.status}`)
+      : log('fail', 'PUT /teams/:id — rename team', `HTTP ${r.status} — ${JSON.stringify(r.body)}`);
+  } else {
+    log('skip', 'PUT /teams/:id — rename team', 'No test team ID');
+  }
+
+  // 3.7 Reject duplicate name on edit
+  if (testTeamId) {
+    // Create another team first
+    const otherName = `Other Team ${Date.now()}`;
+    const otherTeamRes = await req('POST', '/teams', { name: otherName }, adminToken);
+    if (otherTeamRes.status === 201) {
+      const otherId = otherTeamRes.body.teamId;
+      // Try to rename the first team to the second team's name
+      r = await req('PUT', `/teams/${testTeamId}`, { name: otherName }, adminToken);
+      r.status === 400
+        ? log('pass', 'Reject duplicate name on rename', `HTTP ${r.status}`)
+        : log('fail', 'Reject duplicate name on rename', `Expected 400, got ${r.status}`);
+      
+      // Clean up the other team
+      await req('DELETE', `/teams/${otherId}`, null, adminToken);
+    } else {
+      log('skip', 'Reject duplicate name on rename', 'Could not create helper team');
+    }
+  } else {
+    log('skip', 'Reject duplicate name on rename', 'No test team ID');
+  }
+
+  // 3.8 Delete a team and verify cascading to NULL for players
+  if (testPlayerId) {
+    // Create a temporary team
+    const tempName = `Temp Team ${Date.now()}`;
+    const tempTeamRes = await req('POST', '/teams', { name: tempName }, adminToken);
+    if (tempTeamRes.status === 201) {
+      const tempId = tempTeamRes.body.teamId;
+      // Assign test player to this temp team
+      await req('POST', '/teams/assign', { playerId: testPlayerId, teamId: tempId }, adminToken);
+      
+      // Delete the temp team
+      r = await req('DELETE', `/teams/${tempId}`, null, adminToken);
+      if (r.status === 200) {
+        log('pass', 'DELETE /teams/:id — delete team', `HTTP ${r.status}`);
+        
+        // Verify player is now unassigned (team_id is null)
+        const playersList = await req('GET', '/players', null, adminToken);
+        const player = playersList.body.find(p => p.id === testPlayerId);
+        if (player && !player.team_id) {
+          log('pass', 'Deleted team resets player team_id to NULL', 'Verified');
+        } else {
+          log('fail', 'Deleted team resets player team_id to NULL', `player.team_id is still: ${player ? player.team_id : 'not found'}`);
+        }
+      } else {
+        log('fail', 'DELETE /teams/:id — delete team', `HTTP ${r.status}`);
+        log('skip', 'Deleted team resets player team_id to NULL', 'Delete team failed');
+      }
+    } else {
+      log('skip', 'DELETE /teams/:id and player cascade', 'Could not create temp team');
+    }
+  } else {
+    log('skip', 'DELETE /teams/:id and player cascade', 'No test player');
+  }
 }
 
 // ────────────────────────────────────────────────────────────

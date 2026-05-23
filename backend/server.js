@@ -28,19 +28,41 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
-                      origin.endsWith('.vercel.app') ||
-                      origin.startsWith('http://localhost:');
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+app.use(cors((req, callback) => {
+  const origin = req.header('Origin');
+  let isAllowed = false;
+
+  if (!origin) {
+    isAllowed = true;
+  } else {
+    // Extract origin host
+    let originHost = '';
+    try {
+      originHost = new URL(origin).host;
+    } catch (e) {}
+
+    const reqHost = req.header('Host');
+
+    isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
+                origin.endsWith('.vercel.app') ||
+                origin.startsWith('http://localhost:') ||
+                origin.startsWith('http://127.0.0.1:') ||
+                // Allow local network devices in development
+                origin.startsWith('http://192.168.') ||
+                origin.startsWith('http://10.') ||
+                origin.startsWith('http://172.');
+
+    // Allow same-origin requests dynamically (supports custom domains on Vercel)
+    if (!isAllowed && originHost && reqHost && originHost === reqHost) {
+      isAllowed = true;
     }
-  },
-  credentials: true
+  }
+
+  if (isAllowed) {
+    callback(null, { origin: true, credentials: true });
+  } else {
+    callback(new Error('Not allowed by CORS'));
+  }
 }));
 
 app.use(express.json());
@@ -51,6 +73,7 @@ const apiLimiter = rateLimit({
   max: 150,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production',
   message: { message: 'Too many requests from this IP, please try again after 15 minutes' }
 });
 
@@ -59,6 +82,7 @@ const authLimiter = rateLimit({
   max: 15,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV !== 'production',
   message: { message: 'Too many authentication attempts, please try again after 15 minutes' }
 });
 
@@ -700,6 +724,38 @@ app.post('/api/teams/assign', authenticateToken, isAdmin, async (req, res) => {
     res.json({ message: 'Player assigned to team successfully' });
   } catch (error) {
     res.status(500).json({ message: 'Server error assigning player to team' });
+  }
+});
+
+// Edit Team Name (Admin only)
+app.put('/api/teams/:id', authenticateToken, isAdmin, async (req, res) => {
+  const { name } = req.body;
+  const teamId = req.params.id;
+
+  if (!name) {
+    return res.status(400).json({ message: 'Team name is required' });
+  }
+
+  try {
+    await query.run('UPDATE teams SET name = ? WHERE id = ?', [name, teamId]);
+    res.json({ message: 'Team name updated successfully' });
+  } catch (error) {
+    if (error.message && error.message.includes('UNIQUE')) {
+      return res.status(400).json({ message: 'Team name already exists' });
+    }
+    res.status(500).json({ message: 'Server error updating team' });
+  }
+});
+
+// Delete Team (Admin only)
+app.delete('/api/teams/:id', authenticateToken, isAdmin, async (req, res) => {
+  const teamId = req.params.id;
+
+  try {
+    await query.run('DELETE FROM teams WHERE id = ?', [teamId]);
+    res.json({ message: 'Team deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error deleting team' });
   }
 });
 

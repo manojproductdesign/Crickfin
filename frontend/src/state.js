@@ -1,7 +1,7 @@
 // Crickfin Client State Manager
 
 const API_BASE = import.meta.env.DEV
-  ? 'http://localhost:5000/api'
+  ? `${window.location.protocol}//${window.location.hostname}:5000/api`
   : '/api';
 
 class StateStore {
@@ -75,7 +75,26 @@ class StateStore {
         }
       }
 
-      const data = await response.json();
+      // Check if response has JSON content type
+      const contentType = response.headers.get('content-type');
+      let data = {};
+      
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          data = await response.json();
+        } catch (jsonErr) {
+          console.error('Failed to parse JSON response:', jsonErr);
+          throw new Error('Invalid server response format.');
+        }
+      } else {
+        // Non-JSON or empty response
+        const text = await response.text();
+        if (!response.ok) {
+          throw new Error(text || `Request failed with status ${response.status} (${response.statusText})`);
+        }
+        data = { message: text };
+      }
+
       if (!response.ok) {
         throw new Error(data.message || 'Something went wrong');
       }

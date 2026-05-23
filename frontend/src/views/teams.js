@@ -1,6 +1,6 @@
 import { store } from '../state.js';
 import { renderLayout, bindLayoutEvents } from './layout.js';
-import { ICON_SPINNER } from '../assets/icons.js';
+import { ICON_SPINNER, ICON_EDIT, ICON_DELETE } from '../assets/icons.js';
 
 export async function renderTeams() {
   const appEl = document.getElementById('app');
@@ -81,8 +81,16 @@ export async function renderTeams() {
               return `
                 <div class="card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 16px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 12px;">
-                    <h4 style="font-size: 1.15rem; color: var(--accent-color);">${t.name}</h4>
-                    <span class="badge badge-info">${fin.playerCount} Players</span>
+                    <h4 style="font-size: 1.15rem; color: var(--accent-color); margin-right: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.name}</h4>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <button class="btn btn-secondary btn-sm edit-team-btn" data-id="${t.id}" data-name="${t.name}" style="padding: 4px 8px; min-height: unset; height: 28px;" title="Rename Team" aria-label="Rename team ${t.name}">
+                        ${ICON_EDIT}
+                      </button>
+                      <button class="btn btn-danger btn-sm delete-team-btn" data-id="${t.id}" data-name="${t.name}" style="padding: 4px 8px; min-height: unset; height: 28px;" title="Delete Team" aria-label="Delete team ${t.name}">
+                        ${ICON_DELETE}
+                      </button>
+                      <span class="badge badge-info">${fin.playerCount} Players</span>
+                    </div>
                   </div>
                   
                   <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
@@ -106,6 +114,9 @@ export async function renderTeams() {
             }).join('')}
         </div>
       </div>
+
+      <!-- Modals Container -->
+      <div id="team-modal-container"></div>
     `;
 
     appEl.innerHTML = renderLayout(content, 'teams');
@@ -160,4 +171,164 @@ function bindTeamViewEvents() {
       }
     });
   }
+
+  // Bind Edit & Delete buttons
+  document.querySelectorAll('.edit-team-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      const name = e.currentTarget.getAttribute('data-name');
+      showEditTeamModal(id, name);
+    });
+  });
+
+  document.querySelectorAll('.delete-team-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.currentTarget.getAttribute('data-id');
+      const name = e.currentTarget.getAttribute('data-name');
+      showDeleteTeamModal(id, name);
+    });
+  });
+}
+
+function showEditTeamModal(id, name) {
+  const container = document.getElementById('team-modal-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <h3 class="modal-title">Rename Team</h3>
+          <button class="close-btn" id="close-modal">&times;</button>
+        </div>
+        <form id="edit-team-form">
+          <div class="modal-body">
+            <div id="modal-alert"></div>
+            <div class="form-group">
+              <label for="edit-team-name-input">Team Name</label>
+              <input type="text" id="edit-team-name-input" class="form-control" value="${name}" required />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="cancel-modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  const closeModal = () => { container.innerHTML = ''; };
+  document.getElementById('close-modal').addEventListener('click', closeModal);
+  document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('input, button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
+
+  document.getElementById('edit-team-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newName = document.getElementById('edit-team-name-input').value.trim();
+
+    try {
+      await store.apiRequest(`/teams/${id}`, 'PUT', { name: newName });
+      closeModal();
+      renderTeams(); // Refresh view
+    } catch (err) {
+      const alertBox = document.getElementById('modal-alert');
+      if (alertBox) {
+        alertBox.innerHTML = `<div class="alert alert-danger" role="alert" aria-live="assertive">${err.message}</div>`;
+      }
+    }
+  });
+}
+
+function showDeleteTeamModal(id, name) {
+  const container = document.getElementById('team-modal-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="modal-backdrop">
+      <div class="modal-content" style="max-width: 400px;">
+        <div class="modal-header">
+          <h3 class="modal-title" style="color: var(--danger);">Confirm Delete Team</h3>
+          <button class="close-btn" id="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete team <strong>${name}</strong>?</p>
+          <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 8px;">
+            Note: All players assigned to this team will be reset to unassigned. Historical match data and financial billing records will remain intact.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirm-delete-btn">Yes, Delete Team</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const closeModal = () => { container.innerHTML = ''; };
+  document.getElementById('close-modal').addEventListener('click', closeModal);
+  document.getElementById('cancel-modal').addEventListener('click', closeModal);
+
+  // Focus trap and Escape close
+  const modalElement = container.querySelector('.modal-content');
+  if (modalElement) {
+    const focusableEls = modalElement.querySelectorAll('button');
+    const firstFocusable = focusableEls[0];
+    const lastFocusable = focusableEls[focusableEls.length - 1];
+    if (firstFocusable) setTimeout(() => firstFocusable.focus(), 50);
+
+    container.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') {
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else {
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  }
+
+  document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+    try {
+      await store.apiRequest(`/teams/${id}`, 'DELETE');
+      closeModal();
+      renderTeams(); // Refresh view
+    } catch (err) {
+      alert('Delete failed: ' + err.message);
+    }
+  });
 }
