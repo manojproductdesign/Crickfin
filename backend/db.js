@@ -1,4 +1,3 @@
-import sqlite3 from 'sqlite3';
 import pg from 'pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -42,6 +41,7 @@ if (isPostgres) {
     }
     dbPath = tempDbPath;
   }
+  const sqlite3 = (await import('sqlite3')).default;
   db = new sqlite3.Database(dbPath);
   console.log('Database Client: SQLite initialized');
 }
