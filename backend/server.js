@@ -253,6 +253,77 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
+// Update Current User Profile
+app.put('/api/auth/profile', authenticateToken, async (req, res) => {
+  const { name, email, phone } = req.body;
+
+  if (!name || !email || !phone) {
+    return res.status(400).json({ message: 'Name, email, and phone are required' });
+  }
+
+  try {
+    // Check conflicts (email or phone already registered by another active user)
+    const conflictUser = await query.get(
+      'SELECT * FROM users WHERE (email = ? OR phone = ?) AND id != ? AND deleted_at IS NULL',
+      [email, phone, req.user.id]
+    );
+    if (conflictUser) {
+      return res.status(400).json({ message: 'Email or phone number already registered by another user' });
+    }
+
+    await query.run(
+      'UPDATE users SET name = ?, email = ?, phone = ? WHERE id = ?',
+      [name, email, phone, req.user.id]
+    );
+
+    res.json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error updating profile' });
+  }
+});
+
+// Change Current User Password
+app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ message: 'Current password and new password are required' });
+  }
+
+  // Password strength validation
+  if (newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters long' });
+  }
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+  if (!passwordRegex.test(newPassword)) {
+    return res.status(400).json({ message: 'New password must contain at least one uppercase letter, one lowercase letter, and one number' });
+  }
+
+  try {
+    // Get current user password hash
+    const user = await query.get('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL', [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect current password' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await query.run('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, req.user.id]);
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Server error changing password' });
+  }
+});
+
 // Approve Registration (Admin only)
 app.post('/api/auth/approve', authenticateToken, isAdmin, async (req, res) => {
   const { userId, status } = req.body; // status: 'approved'

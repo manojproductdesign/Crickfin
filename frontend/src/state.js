@@ -122,6 +122,26 @@ class StateStore {
     return await this.apiRequest('/auth/register', 'POST', { name, email, phone, password, role });
   }
 
+  async updateProfile(name, email, phone) {
+    const res = await this.apiRequest('/auth/profile', 'PUT', { name, email, phone });
+    const updatedUser = { ...this.state.user, name, email, phone };
+    localStorage.setItem('crickfin_user', JSON.stringify(updatedUser));
+    this.setState({ user: updatedUser });
+    return res;
+  }
+
+  async changePassword(currentPassword, newPassword) {
+    return await this.apiRequest('/auth/change-password', 'PUT', { currentPassword, newPassword });
+  }
+
+  async updateBallFeeConfig(costPerBall) {
+    return await this.apiRequest('/ball-fees/config', 'POST', { costPerBall });
+  }
+
+  async fetchBallFeeConfig() {
+    return await this.apiRequest('/ball-fees/config');
+  }
+
   logout() {
     localStorage.removeItem('crickfin_token');
     localStorage.removeItem('crickfin_user');

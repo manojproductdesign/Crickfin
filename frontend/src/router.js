@@ -11,7 +11,8 @@ const ROUTES = {
   expenses: { path: '#expenses', role: 'admin' },
   teams: { path: '#teams', role: 'admin' },
   reports: { path: '#reports', role: 'admin' },
-  'player-dashboard': { path: '#player-dashboard', role: 'player' }
+  'player-dashboard': { path: '#player-dashboard', role: 'player' },
+  settings: { path: '#settings', role: 'user' }
 };
 
 // Route handlers registry

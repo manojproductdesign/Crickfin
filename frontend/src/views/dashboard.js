@@ -28,8 +28,17 @@ export async function renderAdminDashboard() {
   try {
     const data = await store.fetchDashboard();
     
+    // Additional Admin metrics calculations
+    const totalPlayersCount = data.playerBalances.length;
+    const totalOutstandingDues = data.playerBalances.reduce((sum, pb) => sum + (pb.totalBalance > 0 ? pb.totalBalance : 0), 0);
+    const activeTeamsCount = data.teams ? data.teams.length : 0;
+    const expensePercentage = data.totalCollections > 0 
+      ? Math.min(100, Math.round((data.totalExpenses / data.totalCollections) * 100))
+      : 0;
+
     // Admin dashboard layout HTML
     const content = `
+      <!-- Premium Metrics Overview -->
       <div class="stats-grid">
         <!-- Collection Card -->
         <a href="#payments" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
@@ -50,8 +59,11 @@ export async function renderAdminDashboard() {
             <span style="color: var(--danger);">${ICON_EXPENSES}</span>
           </div>
           <div class="stat-value" style="color: var(--danger);">₹${data.totalExpenses.toLocaleString()}</div>
-          <div class="stat-change tech-label">
-            Active purchases logged
+          <div class="stat-change tech-label" style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+            <span>Spent: ${expensePercentage}%</span>
+            <div style="flex-grow: 1; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; overflow: hidden; margin-left: 8px;">
+              <div style="width: ${expensePercentage}%; height: 100%; background: var(--danger);"></div>
+            </div>
           </div>
         </a>
 
@@ -69,17 +81,36 @@ export async function renderAdminDashboard() {
           </div>
         </a>
 
-        <!-- Pending Approvals Card -->
-        <a href="#players" class="card stat-card card-interactive" style="display: block; text-decoration: none; color: inherit;">
+        <!-- Outstanding Dues Card -->
+        <div class="card stat-card">
           <div class="stat-header">
-            <span>PENDING REGISTRATIONS</span>
-            <span style="color: var(--warning);">${ICON_WARNING}</span>
+            <span>OUTSTANDING DUES</span>
+            <span style="color: var(--warning);">${ICON_HOURGLASS}</span>
           </div>
-          <div class="stat-value">${data.pendingRegistrations}</div>
-          <div class="stat-change tech-label" style="color: ${data.pendingRegistrations > 0 ? 'var(--warning)' : 'var(--text-muted)'};">
-            ${data.pendingRegistrations > 0 ? 'Action required' : 'System up-to-date'}
+          <div class="stat-value" style="color: var(--warning);">₹${totalOutstandingDues.toLocaleString()}</div>
+          <div class="stat-change tech-label">
+            From players with remaining balances
           </div>
-        </a>
+        </div>
+      </div>
+
+      <!-- Quick Summary Badges -->
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; margin-bottom: 8px;">
+        <div class="badge badge-info" style="display: inline-flex; align-items: center; padding: 6px 12px; gap: 6px; border-radius: 9999px;">
+          <span>Registered Players:</span> <strong>${totalPlayersCount}</strong>
+        </div>
+        <div class="badge badge-info" style="display: inline-flex; align-items: center; padding: 6px 12px; gap: 6px; border-radius: 9999px;">
+          <span>Active Teams:</span> <strong>${activeTeamsCount}</strong>
+        </div>
+        ${data.pendingRegistrations > 0 ? `
+          <a href="#players" class="badge badge-danger" style="display: inline-flex; align-items: center; padding: 6px 12px; gap: 6px; border-radius: 9999px; text-decoration: none;">
+            <span>Pending Approvals:</span> <strong>${data.pendingRegistrations}</strong>
+          </a>
+        ` : `
+          <div class="badge badge-success" style="display: inline-flex; align-items: center; padding: 6px 12px; gap: 6px; border-radius: 9999px;">
+            <span>Approvals Queue:</span> <strong>Cleared</strong>
+          </div>
+        `}
       </div>
 
       <!-- Quick Actions and Approvals -->
@@ -99,18 +130,33 @@ export async function renderAdminDashboard() {
         <div class="card">
           <h3 class="card-title">Pending Approvals</h3>
           <div id="pending-users-list" style="margin-top: 12px;">
-            <!-- Render dynamically -->
             Loading approvals...
           </div>
         </div>
       </div>
 
-      <!-- Player Balance Ledger -->
+      <!-- Player Balance Ledger with Client-Side Search Filters -->
       <div class="card" style="margin-top: 24px;">
-        <h3 class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
-          <span>Player Balance Ledger</span>
-          <a href="#reports" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; text-decoration: none;">View Reports</a>
-        </h3>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <h3 class="card-title">Player Balance Ledger</h3>
+            <a href="#reports" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; text-decoration: none;">View Reports</a>
+          </div>
+          
+          <!-- Search & Filter Controls -->
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px;">
+            <div style="flex: 1; min-width: 240px; position: relative;">
+              <input type="text" id="ledger-search" class="form-control" placeholder="Search players by name or phone..." style="padding-right: 30px; margin-bottom: 0;" />
+            </div>
+            <div>
+              <select id="ledger-status-filter" class="form-control" style="width: auto; margin-bottom: 0;">
+                <option value="all">All Players</option>
+                <option value="dues">Outstanding Dues Only</option>
+                <option value="cleared">Cleared Balances Only</option>
+              </select>
+            </div>
+          </div>
+        </div>
         
         <div class="table-container">
           <table>
@@ -127,13 +173,13 @@ export async function renderAdminDashboard() {
                 <th>Total Balance</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="ledger-tbody">
               ${data.playerBalances.length === 0 ? `
-                <tr>
-                  <td colspan="9" style="text-align: center; color: var(--text-muted);">No players registered yet.</td>
+                <tr class="no-results-row">
+                  <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 20px;">No players registered yet.</td>
                 </tr>
               ` : data.playerBalances.map(pb => `
-                <tr>
+                <tr class="ledger-row" data-name="${pb.name.toLowerCase()}" data-phone="${pb.phone}" data-balance="${pb.totalBalance}">
                   <td><strong>${pb.name}</strong><br><small class="tech-label" style="font-size: 0.7rem;">${pb.phone}</small></td>
                   <td style="font-family: var(--font-mono);">${pb.matchesPlayed}</td>
                   <td style="font-family: var(--font-mono);">₹${pb.ballFeesDue}</td>
@@ -149,6 +195,9 @@ export async function renderAdminDashboard() {
                   </td>
                 </tr>
               `).join('')}
+              <tr id="empty-search-row" style="display: none;">
+                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">No players match your search filter.</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -157,8 +206,9 @@ export async function renderAdminDashboard() {
 
     appEl.innerHTML = renderLayout(content, 'dashboard');
     bindLayoutEvents();
+    bindAdminDashboardEvents();
     
-    // Now render pending registrations
+    // Render approvals queue
     renderPendingApprovals(data.playerBalances);
   } catch (error) {
     appEl.innerHTML = renderLayout(`
@@ -170,12 +220,61 @@ export async function renderAdminDashboard() {
   }
 }
 
+function bindAdminDashboardEvents() {
+  const searchInput = document.getElementById('ledger-search');
+  const statusFilter = document.getElementById('ledger-status-filter');
+  const tbody = document.getElementById('ledger-tbody');
+
+  if (searchInput && statusFilter && tbody) {
+    const rows = Array.from(tbody.querySelectorAll('.ledger-row'));
+    const emptyRow = document.getElementById('empty-search-row');
+
+    const filterLedger = () => {
+      const searchVal = searchInput.value.toLowerCase().trim();
+      const statusVal = statusFilter.value;
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name');
+        const phone = row.getAttribute('data-phone');
+        const balance = parseFloat(row.getAttribute('data-balance'));
+
+        const matchesSearch = name.includes(searchVal) || phone.includes(searchVal);
+        
+        let matchesStatus = true;
+        if (statusVal === 'dues') {
+          matchesStatus = balance > 0;
+        } else if (statusVal === 'cleared') {
+          matchesStatus = balance <= 0;
+        }
+
+        if (matchesSearch && matchesStatus) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      if (rows.length > 0) {
+        if (visibleCount === 0) {
+          emptyRow.style.display = '';
+        } else {
+          emptyRow.style.display = 'none';
+        }
+      }
+    };
+
+    searchInput.addEventListener('input', filterLedger);
+    statusFilter.addEventListener('change', filterLedger);
+  }
+}
+
 async function renderPendingApprovals(allPlayers) {
   const container = document.getElementById('pending-users-list');
   if (!container) return;
 
   try {
-    // We can fetch players with status pending
     const pending = await store.fetchPlayers('', '', 'pending');
     
     if (pending.length === 0) {
@@ -193,7 +292,6 @@ async function renderPendingApprovals(allPlayers) {
       </div>
     `).join('');
 
-    // Bind approval click
     container.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = e.target.getAttribute('data-id');
@@ -201,7 +299,6 @@ async function renderPendingApprovals(allPlayers) {
         e.target.textContent = '...';
         try {
           await store.apiRequest('/auth/approve', 'POST', { userId: id, status: 'approved' });
-          // Reload
           renderAdminDashboard();
         } catch (err) {
           alert('Approval failed: ' + err.message);
@@ -229,12 +326,31 @@ export async function renderPlayerDashboard() {
   `;
 
   try {
-    const data = await store.fetchDashboard(); // fetches activePlayerDashboard for players
+    const data = await store.fetchDashboard();
     const summary = data.summary;
 
+    const paidRatio = summary.totalDue > 0
+      ? Math.min(100, Math.round((summary.totalPaid / summary.totalDue) * 100))
+      : 100;
+
     const content = `
+      ${summary.totalBalance > 0 ? `
+        <div class="alert alert-danger" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <strong>Outstanding balance: ₹${summary.totalBalance.toLocaleString()}</strong>
+            <div style="font-size: 0.8rem; margin-top: 2px; opacity: 0.85;">
+              You have pending fees for matches and balls. Please clear them with the league admin.
+            </div>
+          </div>
+          <a href="#settings" class="btn btn-secondary btn-sm" style="text-decoration: none;">View profile settings</a>
+        </div>
+      ` : `
+        <div class="alert alert-success" style="margin-bottom: 24px;">
+          <strong>All dues cleared!</strong> Excellent! Your financial record is fully up-to-date. Thank you!
+        </div>
+      `}
+
       <div class="stats-grid">
-        <!-- Total Fees Due -->
         <div class="card stat-card">
           <div class="stat-header">
             <span>TOTAL DUES CHARGED</span>
@@ -246,7 +362,6 @@ export async function renderPlayerDashboard() {
           </div>
         </div>
 
-        <!-- Total Paid -->
         <div class="card stat-card">
           <div class="stat-header">
             <span>TOTAL PAID</span>
@@ -258,7 +373,6 @@ export async function renderPlayerDashboard() {
           </div>
         </div>
 
-        <!-- Remaining Balance -->
         <div class="card stat-card">
           <div class="stat-header">
             <span>OUTSTANDING BALANCE</span>
@@ -273,11 +387,20 @@ export async function renderPlayerDashboard() {
         </div>
       </div>
 
+      <div class="card" style="margin-top: 24px; padding: 20px;">
+        <h3 class="card-title" style="margin-bottom: 12px; font-size: 1rem; color: var(--text-muted);">Payment Clearance Ratio</h3>
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div style="flex-grow: 1; height: 12px; background: rgba(255,255,255,0.05); border-radius: 6px; overflow: hidden; position: relative;">
+            <div style="width: ${paidRatio}%; height: 100%; background: linear-gradient(90deg, #059669, #10b981); border-radius: 6px;"></div>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 1.1rem; font-weight: bold; color: var(--success);">${paidRatio}% Paid</span>
+        </div>
+      </div>
+
       <div class="grid-2" style="margin-top: 24px;">
-        <!-- Match History -->
         <div class="card">
           <h3 class="card-title">Match Participation History</h3>
-          <div class="table-container">
+          <div class="table-container" style="max-height: 380px; overflow-y: auto;">
             <table>
               <thead>
                 <tr>
@@ -307,10 +430,9 @@ export async function renderPlayerDashboard() {
           </div>
         </div>
 
-        <!-- Payment History -->
         <div class="card">
           <h3 class="card-title">My Payment History</h3>
-          <div class="table-container">
+          <div class="table-container" style="max-height: 380px; overflow-y: auto;">
             <table>
               <thead>
                 <tr>

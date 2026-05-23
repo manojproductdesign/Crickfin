@@ -10,7 +10,8 @@ import {
   ICON_REPORTS,
   ICON_BURGER,
   ICON_LOGOUT,
-  ICON_LOGO
+  ICON_LOGO,
+  ICON_SETTINGS
 } from '../assets/icons.js';
 
 export function renderLayout(contentHtml, activeView) {
@@ -31,7 +32,8 @@ export function renderLayout(contentHtml, activeView) {
       { id: 'payments', label: 'Payments', icon: ICON_PAYMENTS, hash: '#payments' },
       { id: 'expenses', label: 'Expenses', icon: ICON_EXPENSES, hash: '#expenses' },
       { id: 'teams', label: 'Teams', icon: ICON_TEAMS, hash: '#teams' },
-      { id: 'reports', label: 'Reports', icon: ICON_REPORTS, hash: '#reports' }
+      { id: 'reports', label: 'Reports', icon: ICON_REPORTS, hash: '#reports' },
+      { id: 'settings', label: 'Settings', icon: ICON_SETTINGS, hash: '#settings' }
     ];
 
     menuHtml = adminLinks.map(link => `
@@ -44,6 +46,9 @@ export function renderLayout(contentHtml, activeView) {
     menuHtml = `
       <li class="menu-item ${activeView === 'player-dashboard' ? 'active' : ''}">
         <a href="#player-dashboard">${ICON_DASHBOARD} <span>My Dashboard</span></a>
+      </li>
+      <li class="menu-item ${activeView === 'settings' ? 'active' : ''}">
+        <a href="#settings">${ICON_SETTINGS} <span>Settings</span></a>
       </li>
     `;
   }
