@@ -344,18 +344,25 @@ app.post('/api/auth/approve', authenticateToken, isAdmin, async (req, res) => {
 // Player Management Routes
 // ==========================================
 
-// Get All Players (Admin or Logged In Player list)
+// Get All Players/Users (Admin or Logged In Player list)
 app.get('/api/players', authenticateToken, async (req, res) => {
   try {
     // Read search, filter queries
-    const { search, teamId, status } = req.query;
+    const { search, teamId, status, role } = req.query;
     let sql = `
       SELECT u.id, u.name, u.email, u.phone, u.role, u.status, u.team_id, t.name as team_name, u.created_at
       FROM users u
       LEFT JOIN teams t ON u.team_id = t.id
-      WHERE u.role = 'player' AND u.deleted_at IS NULL
+      WHERE u.deleted_at IS NULL
     `;
     const params = [];
+
+    if (role && role !== 'all') {
+      sql += ` AND u.role = ?`;
+      params.push(role);
+    } else if (!role) {
+      sql += ` AND u.role = 'player'`;
+    }
 
     if (search) {
       sql += ` AND (u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?)`;

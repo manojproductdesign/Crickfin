@@ -275,7 +275,7 @@ async function renderPendingApprovals(allPlayers) {
   if (!container) return;
 
   try {
-    const pending = await store.fetchPlayers('', '', 'pending');
+    const pending = await store.fetchPlayers('', '', 'pending', 'all');
     
     if (pending.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.9rem;">No pending approvals.</p>`;
@@ -285,8 +285,11 @@ async function renderPendingApprovals(allPlayers) {
     container.innerHTML = pending.map(user => `
       <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 8px;">
         <div>
-          <strong style="font-size: 0.9rem;">${user.name}</strong>
-          <div style="font-size: 0.75rem; color: var(--text-muted);">${user.email} | ${user.phone}</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong style="font-size: 0.9rem;">${user.name}</strong>
+            <span class="badge ${user.role === 'admin' ? 'badge-danger' : 'badge-info'}" style="font-size: 0.7rem; padding: 2px 6px; text-transform: uppercase;">${user.role}</span>
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">${user.email} | ${user.phone}</div>
         </div>
         <button class="btn btn-primary btn-sm approve-btn" data-id="${user.id}" aria-label="Approve registration for ${user.name}">Approve</button>
       </div>

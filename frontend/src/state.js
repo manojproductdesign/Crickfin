@@ -170,11 +170,12 @@ class StateStore {
     }
   }
 
-  async fetchPlayers(search = '', teamId = '', status = '') {
+  async fetchPlayers(search = '', teamId = '', status = '', role = '') {
     let queryParams = [];
     if (search) queryParams.push(`search=${encodeURIComponent(search)}`);
     if (teamId) queryParams.push(`teamId=${teamId}`);
     if (status) queryParams.push(`status=${status}`);
+    if (role) queryParams.push(`role=${role}`);
     
     const queryString = queryParams.length ? `?${queryParams.join('&')}` : '';
     const data = await this.apiRequest(`/players${queryString}`);
