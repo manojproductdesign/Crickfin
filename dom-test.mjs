@@ -63,7 +63,7 @@ async function testAuth() {
     : log('fail', 'Reject missing password field', `Expected 400, got ${r.status}`);
 
   // 1.3 Admin login success
-  r = await req('POST', '/auth/login', { email: 'admin@crickfin.com', password: 'admin123' });
+  r = await req('POST', '/auth/login', { email: 'admin@crickfin.com', password: 'Admin@Crickfin123' });
   if (r.status === 200 && r.body.token) {
     adminToken = r.body.token;
     log('pass', 'Admin login success', `Role: ${r.body.user.role}`);

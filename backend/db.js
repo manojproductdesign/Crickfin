@@ -246,7 +246,7 @@ async function seedDb() {
   const adminUser = await query.get("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
   if (!adminUser) {
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash('admin123', salt);
+    const hash = await bcrypt.hash('Admin@Crickfin123', salt);
     await query.run(
       `INSERT INTO users (id, name, email, phone, password_hash, role, status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -260,6 +260,6 @@ async function seedDb() {
         'approved'
       ]
     );
-    console.log('Seeded default admin user: admin@crickfin.com / admin123');
+    console.log('Seeded default admin user: admin@crickfin.com / Admin@Crickfin123');
   }
 }
